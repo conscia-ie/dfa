@@ -1,12 +1,11 @@
 class LiveChatLoader {
   constructor({
     containerId = "divicw",
-    scriptBaseUrl = "https://attachuk.imi.chat/widget/js/imichatinit.js",
-    allowedOrigin = window.location.origin
+    scriptUrl = "https://attachuk.imi.chat/widget/js/imichatinit.js"
   } = {}) {
     this.containerId = containerId;
-    this.scriptBaseUrl = scriptBaseUrl;
-    this.allowedOrigin = allowedOrigin;
+    this.scriptUrl = scriptUrl;
+    this.iframeId = "tls_al_frm";
 
     this.handleMessage = this.handleMessage.bind(this);
   }
@@ -14,13 +13,14 @@ class LiveChatLoader {
   init() {
     try {
       const container = document.getElementById(this.containerId);
+
       if (!container) {
-        console.warn(`Container #${this.containerId} not found.`);
+        console.warn(`[LiveChatLoader] Container #${this.containerId} not found.`);
         return;
       }
 
       const script = document.createElement("script");
-      script.src = `${this.scriptBaseUrl}?t=${new Date().toISOString()}`;
+      script.src = `${this.scriptUrl}?t=${new Date().toISOString()}`;
       script.async = true;
 
       script.addEventListener("load", () => {
@@ -41,41 +41,37 @@ class LiveChatLoader {
       container.insertAdjacentElement("afterend", script);
 
     } catch (error) {
-      console.error("LiveChatLoader error:", error);
+      console.error("[LiveChatLoader] Unexpected error:", error);
     }
   }
 
   showFallback(container) {
-    if (document.getElementById("tls_al_frm")) return;
+    if (document.getElementById(this.iframeId)) return;
 
     const iframe = document.createElement("iframe");
-    iframe.id = "tls_al_frm";
+    iframe.id = this.iframeId;
+
     iframe.style.cssText = `
-      overflow:hidden;
-      height:208px;
-      width:394px;
-      position:fixed;
-      right:48px;
-      bottom:12px;
-      z-index:99999;
-      border:0;
+      overflow: hidden;
+      height: 208px;
+      width: 394px;
+      position: fixed;
+      right: 48px;
+      bottom: 12px;
+      z-index: 99999;
+      border: 0;
     `;
 
+    iframe.srcdoc = this.getFallbackHTML();
+
     container.insertAdjacentElement("afterend", iframe);
-
-    const doc = iframe.contentDocument;
-    if (!doc) return;
-
-    doc.open();
-    doc.write(this.getFallbackHTML());
-    doc.close();
 
     window.addEventListener("message", this.handleMessage);
   }
 
   handleMessage(event) {
     if (
-      event.origin === this.allowedOrigin &&
+      event.origin === window.location.origin &&
       event.data?.action === "close_tls_alert"
     ) {
       this.removeFallback();
@@ -83,7 +79,7 @@ class LiveChatLoader {
   }
 
   removeFallback() {
-    const iframe = document.getElementById("tls_al_frm");
+    const iframe = document.getElementById(this.iframeId);
     if (iframe) iframe.remove();
     window.removeEventListener("message", this.handleMessage);
   }
@@ -96,7 +92,7 @@ class LiveChatLoader {
           <meta charset="utf-8">
           <style>
             body {
-              font-family: -apple-system, BlinkMacSystemFont, 
+              font-family: -apple-system, BlinkMacSystemFont,
                            "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
               color: #99a0b0;
               font-size: 14px;
@@ -107,36 +103,37 @@ class LiveChatLoader {
             .popover {
               background: #fbfbfe;
               padding: 1.5rem;
-              border-radius: 8px;
-              box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+              border-radius: 6px;
+              width: 300px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
               position: relative;
             }
             .title {
               font-weight: 600;
-              font-size: 16px;
               color: #56627c;
+              font-size: 16px;
               margin-bottom: 0.75rem;
             }
-            .close {
+            .close-btn {
               position: absolute;
               right: 12px;
               top: 12px;
               cursor: pointer;
               font-size: 16px;
-              color: #56627c;
               background: none;
               border: none;
+              color: #56627c;
             }
           </style>
         </head>
         <body>
           <div class="popover">
-            <button class="close" onclick="closeTLSAlert()">✕</button>
+            <button class="close-btn" onclick="closeTLSAlert()">✕</button>
             <div class="title">
               This browser version is not supported on LiveChat.
             </div>
             <p>
-              Please update your browser to the latest version and reopen the website to access the widget.
+              Please update your browser to the latest version and re-open the website to access the widget.
             </p>
           </div>
 
@@ -154,5 +151,10 @@ class LiveChatLoader {
   }
 }
 
-const liveChat = new LiveChatLoader();
-liveChat.init();
+document.addEventListener("DOMContentLoaded", () => {
+  const liveChat = new LiveChatLoader();
+  liveChat.init();
+});
+
+/* Optional export if used as module */
+export default LiveChatLoader;
