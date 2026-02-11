@@ -155,6 +155,3 @@ document.addEventListener("DOMContentLoaded", () => {
   const liveChat = new LiveChatLoader();
   liveChat.init();
 });
-
-/* Optional export if used as module */
-export default LiveChatLoader;
